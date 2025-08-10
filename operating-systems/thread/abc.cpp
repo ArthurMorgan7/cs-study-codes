@@ -6,9 +6,7 @@
 using namespace std;
 
 void printChar(char c){
-    while(1){
-        cout << c << endl;
-    }
+    cout << c << endl;
 }
 
 int main(){
