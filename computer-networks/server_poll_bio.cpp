@@ -10,8 +10,8 @@
 #define PORT 12345
 #define BUFFER_SIZE 1024
 
-// 创建并绑定套接字
-int create_server_socket(int port) {
+int main() {
+    // 创建监听套接字
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1) {
         perror("socket");
@@ -22,7 +22,7 @@ int create_server_socket(int port) {
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(port);
+    server_addr.sin_port = htons(PORT);
 
     if (bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
         perror("bind");
@@ -36,13 +36,8 @@ int create_server_socket(int port) {
         exit(1);
     }
 
-    return server_fd;
-}
 
-int main() {
-    int server_fd = create_server_socket(PORT);
-
-    // 用 poll 来监控套接字
+    // poll的文件描述符数组相比于select的位图是可以自定义长度的
     struct pollfd fds[MAX_CLIENTS + 1]; // +1 for server socket
     fds[0].fd = server_fd;
     fds[0].events = POLLIN;  // server_fd 可读，表示有新的连接请求
@@ -56,7 +51,7 @@ int main() {
     char buffer[BUFFER_SIZE];
 
     while (true) {
-        int ret = poll(fds, MAX_CLIENTS + 1, -1); // 无限等待
+        int ret = poll(fds, MAX_CLIENTS + 1, -1); // 阻塞等待
         if (ret == -1) {
             perror("poll");
             break;
@@ -64,7 +59,7 @@ int main() {
 
         // 处理服务器套接字的连接请求
         if (fds[0].revents & POLLIN) {
-            int client_fd = accept(server_fd, nullptr, nullptr);
+            int client_fd = accept(server_fd, nullptr, nullptr);    // 一次从全连接队中取出一个连接
             if (client_fd == -1) {
                 perror("accept");
                 continue;
@@ -73,6 +68,7 @@ int main() {
             // 将新的客户端套接字添加到 fds
             bool added = false;
             for (int i = 1; i <= MAX_CLIENTS; ++i) {
+                // 找到第一个空闲的位置，放置新的客户端套接字
                 if (fds[i].fd == -1) {
                     fds[i].fd = client_fd;
                     std::cout << "New connection established, client fd: " << client_fd << std::endl;
@@ -87,22 +83,26 @@ int main() {
             }
         }
 
-        // 处理客户端的请求
+        // 处理 listenfd之后的客户端请求
         for (int i = 1; i <= MAX_CLIENTS; ++i) {
             if (fds[i].fd != -1 && (fds[i].revents & POLLIN)) {
                 ssize_t bytes_received = recv(fds[i].fd, buffer, sizeof(buffer), 0);
+                // 如果接收数据出错或客户端关闭连接
                 if (bytes_received == -1) {
                     perror("recv");
                     close(fds[i].fd);
                     fds[i].fd = -1;
-                } else if (bytes_received == 0) {
+                } 
+                // 如果客户端关闭连接
+                else if (bytes_received == 0) {
                     std::cout << "Client disconnected, fd: " << fds[i].fd << std::endl;
                     close(fds[i].fd);
                     fds[i].fd = -1;
-                } else {
+                } 
+                // 如果接收到数据
+                else {
                     buffer[bytes_received] = '\0';
                     std::cout << "Received from client " << fds[i].fd << ": " << buffer << std::endl;
-
                     // 回显客户端发送的数据
                     send(fds[i].fd, buffer, bytes_received, 0);
                 }

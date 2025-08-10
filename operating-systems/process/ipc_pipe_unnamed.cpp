@@ -33,7 +33,7 @@ int main() {
     } else {  // 子进程
         close(pipefd[1]);  // 关闭写端
         read(pipefd[0], buffer, sizeof(buffer));  // 从管道读取数据
-        std::cout << "Child process received: " << buffer << std::endl;
+        cout << "Child process received: " << buffer <<endl;
         close(pipefd[0]);  // 关闭读端
     }
 

@@ -1,5 +1,3 @@
-// 单线程Reactor模式
-
 #include <iostream>
 #include <unistd.h>
 #include <sys/types.h>
@@ -9,19 +7,15 @@
 #include <errno.h>
 #include <cstring>
 
-void setNonBlocking(int sock) {
-    int flags = fcntl(sock, F_GETFL, 0);
-    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-}
 
 int main() {
-
+    // 创建一个 socket fd
     int listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    
-    // 设置 socket 为非阻塞模式
-    setNonBlocking(listenfd);
+    int flags = fcntl(listenfd, F_GETFL, 0);
+    fcntl(listenfd, F_SETFL, flags | O_NONBLOCK);       // 设置 socket 为非阻塞模式
 
-    // 
+
+    // 配置端口
     struct sockaddr_in serverAddr;
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
@@ -34,12 +28,14 @@ int main() {
     // 监听状态
     listen(listenfd, SOMAXCONN);
 
-    fd_set masterSet, readSet;
+    // 创建位图，存储select的结果
+    fd_set masterSet, readSet;  // 默认是1024位的一个位图
     FD_ZERO(&masterSet);
     FD_SET(listenfd, &masterSet);
     int maxfd = listenfd;
 
     while (true) {
+        // masterSet 是一个全局的位图，readSet 是每次 select 调用时的临时位图
         readSet = masterSet;
         int nready = select(maxfd + 1, &readSet, nullptr, nullptr, nullptr);
         
@@ -53,18 +49,23 @@ int main() {
             break;
         }
 
+        // 遍历位图，看是否有就绪的文件描述符
         for (int fd = 0; fd <= maxfd; ++fd) 
         {
+            // 
             if (FD_ISSET(fd, &readSet)) 
             {
-                // 有新的客户端连接到达
+                // 如果是listenfd，表示有新的连接到达
                 if (fd == listenfd) {
                     // 建立连接
                     int connfd = accept(listenfd, nullptr, nullptr);
                     // 设置为非阻塞模式
                     setNonBlocking(connfd);
                     
+                    // 把新的连接加入到位图中
                     FD_SET(connfd, &masterSet);
+
+                    // 如果新的连接描述符大于当前的最大描述符，更新最大描述符，也就是扩大以后位图遍历范围
                     if (connfd > maxfd) maxfd = connfd;
                     std::cout << "New connection accepted: " << connfd << std::endl;
                 } 

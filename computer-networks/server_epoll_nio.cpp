@@ -83,8 +83,9 @@ int main() {
 
         // 遍历每个发生行为的事件
         for (int i = 0; i < nfds; i++) {
+            // 有新的客户端连接
             if (events[i].data.fd == server_fd) {
-                // 有新的客户端连接
+                
                 socklen_t addrlen = sizeof(address);
                 client_fd = accept(server_fd, (struct sockaddr *)&address, &addrlen);
                 if (client_fd == -1) {
@@ -105,6 +106,7 @@ int main() {
                 }
 
             } 
+            // 处理客户端数据
             else if (events[i].events & EPOLLIN) {
                 // 数据可读
                 char buffer[READ_BUFFER];
@@ -124,7 +126,9 @@ int main() {
                     epoll_ctl(epoll_fd, EPOLL_CTL_MOD, events[i].data.fd, &ev);
                 }
 
-            } else if (events[i].events & EPOLLOUT) {
+            }
+            // 处理可写事件 
+            else if (events[i].events & EPOLLOUT) {
                 // 数据可写
                 std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
                 write(events[i].data.fd, response.c_str(), response.size());
