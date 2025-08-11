@@ -1,35 +1,33 @@
 #include <mutex>
-#include <iostream>
 #include <thread>
 #include <chrono>
 
 using namespace std;
 
-std::mutex mtx_1;
-std::mutex mtx_2;
+mutex mtx_1;
+mutex mtx_2;
 
-// int i = 0;
-void dead1(){
-    mtx_1.lock();
-    cout << "This is dead1" << endl;
-    mtx_2.lock();
+void func1(){
+    unique_lock<mutex> lock_1(mtx_1);
+    this_thread::sleep_for(chrono::seconds(3));
+    unique_lock<mutex> lock_2(mtx_2);
+
 }
 
-// int j = 0;
-void dead2(){
-    mtx_2.lock();
-    cout << "This is dead2" << endl;
-    mtx_1.lock();
+void func2(){
+    unique_lock<mutex> lock_1(mtx_2);   // 打破循环等待条件：保持相同的加锁顺序能避免死锁
+    this_thread::sleep_for(chrono::seconds(2));
+    unique_lock<mutex> lock_2(mtx_1);
+
 }
 
 
-
-int main(int argc, char** argv){
-    std::thread t1(dead1);
-    std::thread t2(dead2);
+int main(){
+    thread t1(func1);
+    thread t2(func2);
 
     t1.join();
     t2.join();
 
-    return 0;
+    printf("\ndone\n");
 }
