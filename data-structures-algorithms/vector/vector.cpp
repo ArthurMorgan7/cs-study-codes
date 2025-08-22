@@ -1,87 +1,91 @@
+#include <stdlib.h>
 #include <iostream>
-#include <stdexcept>
-#include <algorithm>  // std::copy
+#include <cmath>
+
+
+using namespace std;
 
 template <typename T>
-class SimpleVector {
+class Vector{
 private:
-    T* data;
-    size_t _size;
-    size_t _capacity;
-
-    void reallocate(size_t new_capacity) {
-        T* new_data = new T[new_capacity];
-        for (size_t i = 0; i < _size; ++i)
-            new_data[i] = std::move(data[i]);
-        delete[] data;
-        data = new_data;
-        _capacity = new_capacity;
-    }
-
+    T* ptr_;
+    size_t size_ = 0;
+    size_t capacity_ = 1;
+    
 public:
-    SimpleVector() : data(nullptr), _size(0), _capacity(0) {}
-
-    ~SimpleVector() {
-        delete[] data;
+    Vector(){
+        ptr_ = new T(capacity_);
     }
 
-    void push_back(const T& value) {
-        if (_size == _capacity) {
-            size_t new_cap = _capacity == 0 ? 1 : _capacity * 2;
-            reallocate(new_cap);
+    Vector(size_t n){
+        capacity_ = n;
+        ptr_ = new T(capacity_);
+    }
+
+    Vector(size_t n, T val){
+        capacity_ = n;
+        size_ = n;
+        ptr_ = new T(capacity_);
+        for(int i = 0; i < n; i++){
+            *(ptr_ + i) = val;
         }
-        data[_size++] = value;
     }
 
-    void pop_back() {
-        if (_size > 0)
-            --_size;
+    size_t size() const{ return size_; }
+
+    size_t capacity() const { return capacity_; }
+
+    T& operator[](size_t i){
+        if(i >= capacity_){
+            throw out_of_range("访问越界");
+        }
+        return *(ptr_ + i);     
     }
 
-    T& operator[](size_t index) {
-        if (index >= _size)
-            throw std::out_of_range("Index out of range");
-        return data[index];
+    void push_back(T val){
+        if(size_ == capacity_){
+            resize(ceil(1.5 * (float)capacity_));
+        }
+        *(ptr_ + size_) = val;
+        ++size_;
     }
 
-    const T& operator[](size_t index) const {
-        if (index >= _size)
-            throw std::out_of_range("Index out of range");
-        return data[index];
-    }
 
-    size_t size() const {
-        return _size;
-    }
-
-    size_t capacity() const {
-        return _capacity;
-    }
-
-    bool empty() const {
-        return _size == 0;
+    void resize(size_t n){
+        if(n > capacity_){
+            T* ptr_new = new T(n);
+            capacity_ = n;
+            for(int i = 0; i < size_; i++){
+                *(ptr_new + i) = *(ptr_ + i);
+            }
+            free(ptr_);
+            ptr_ = ptr_new;
+        }
+        else{
+            size_ = n;
+        }
     }
 };
 
 
-int main() {
-    SimpleVector<int> vec;
+int main(){
+    // Vector<int> vec(10);
+    // cout << vec.size() << endl;
+    // cout << vec.capacity() << endl;
 
-    vec.push_back(10);
-    vec.push_back(20);
-    vec.push_back(30);
+    // for(int i = 0; i < 10; i++){
+    //     vec[i] = i;
+    //     cout << vec[i];
+    // }
 
-    std::cout << "Vector size: " << vec.size() << "\n";
-    std::cout << "Vector capacity: " << vec.capacity() << "\n";
 
-    for (size_t i = 0; i < vec.size(); ++i) {
-        std::cout << vec[i] << " ";
+    Vector<int> vec;
+    for(int i = 0; i < 10; i++){
+        vec.push_back(i);
+        cout << vec[i];
     }
-    std::cout << "\n";
 
-    vec.pop_back();
-    std::cout << "After pop_back, size: " << vec.size() << "\n";
-    std::cout << "Last element: " << vec[vec.size() - 1] << "\n";
-
+    cout << endl;
     return 0;
 }
+
